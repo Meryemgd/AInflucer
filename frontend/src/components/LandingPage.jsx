@@ -1,74 +1,105 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import "./LandingPage.css";
+import { FaRobot, FaCalendarAlt, FaChartBar, FaShareAlt } from "react-icons/fa";
 
 function LandingPage() {
-    const [message, setMessage] = useState("");
+    const navigate = useNavigate();
 
-    useEffect(() => {
-        axios.get("http://localhost:8080/api/public/landing")
-            .then(res => setMessage(res.data.message))
-            .catch(err => console.error(err));
-    }, []);
+    // Fonctions de navigation pour une meilleure maintenabilité
+    const goToLogin = () => navigate("/login");
+    const goToRegister = () => navigate("/register");
+    const goToDemo = () => navigate("/demo");
 
     return (
-        <div style={styles.container}>
-            <div style={styles.card}>
-                <h1 style={styles.title}>{message}</h1>
-                <p style={styles.subtitle}>
-                    Gérez vos réseaux sociaux avec la puissance de l'IA 🤖
-                </p>
-                <div style={styles.buttonContainer}>
-                    <button style={{ ...styles.button, backgroundColor: "#4CAF50" }}>Login</button>
-                    <button style={{ ...styles.button, backgroundColor: "#2196F3" }}>Register</button>
+        <div className="landing-page">
+            {/* Navigation */}
+            <nav className="navbar">
+                <div className="logo" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
+                    AInfluencer
                 </div>
-            </div>
+                <div className="nav-buttons">
+                    <button
+                        className="btn-secondary"
+                        onClick={goToLogin}
+                        aria-label="Aller à la page de connexion"
+                    >
+                        Connexion
+                    </button>
+                    <button
+                        className="btn-primary"
+                        onClick={goToRegister}
+                        aria-label="Aller à la page d'inscription"
+                    >
+                        Inscription
+                    </button>
+                </div>
+            </nav>
+
+            {/* Section Hero */}
+            <header className="hero colorful-bg">
+                <div className="hero-text">
+                    <h1>Boostez votre présence en ligne avec l'IA 🤖</h1>
+                    <p>
+                        Planifiez, créez et publiez vos contenus automatiquement
+                        tout en suivant vos performances avec un dashboard intelligent.
+                    </p>
+                    <div className="buttons">
+                        <button
+                            className="btn-primary"
+                            onClick={goToRegister}
+                            aria-label="Commencer l'inscription"
+                        >
+                            Commencer
+                        </button>
+                        <button
+                            className="btn-secondary"
+                            onClick={goToDemo}
+                            aria-label="Voir la démonstration"
+                        >
+                            Voir Démo
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            {/* Services / Fonctionnalités */}
+            <section className="features">
+                <h2>Nos Services</h2>
+                <div className="feature-grid">
+                    <div className="feature-card">
+                        <FaRobot className="feature-icon" />
+                        <h3>Génération IA</h3>
+                        <p>Créez des posts personnalisés grâce à notre IA spécialisée en réseaux sociaux.</p>
+                    </div>
+                    <div className="feature-card">
+                        <FaCalendarAlt className="feature-icon" />
+                        <h3>Planification intelligente</h3>
+                        <p>Planifiez vos publications aux moments les plus engageants avec rappels automatiques.</p>
+                    </div>
+                    <div className="feature-card">
+                        <FaChartBar className="feature-icon" />
+                        <h3>Dashboard personnalisé</h3>
+                        <p>Analysez vos vues, abonnés et taux d'engagement en temps réel.</p>
+                    </div>
+                    <div className="feature-card">
+                        <FaShareAlt className="feature-icon" />
+                        <h3>Multi-réseaux sociaux</h3>
+                        <p>Publiez automatiquement sur Facebook, Instagram, LinkedIn et plus encore.</p>
+                    </div>
+                </div>
+            </section>
+
+            {/* Footer */}
+            <footer className="footer">
+                <p>© 2025 AInfluencer - Community Management assisté par IA</p>
+                <div className="footer-links">
+                    <span onClick={() => navigate("/terms")}>Conditions d'utilisation</span>
+                    <span onClick={() => navigate("/privacy")}>Politique de confidentialité</span>
+                </div>
+            </footer>
         </div>
     );
 }
-
-const styles = {
-    container: {
-        height: "100vh",
-        background: "linear-gradient(135deg, #1f1c2c, #928DAB)",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-        color: "#fff",
-        textAlign: "center",
-        padding: "20px"
-    },
-    card: {
-        background: "rgba(255, 255, 255, 0.1)",
-        padding: "40px",
-        borderRadius: "20px",
-        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
-        backdropFilter: "blur(8px)",
-        maxWidth: "500px"
-    },
-    title: {
-        fontSize: "2.5rem",
-        marginBottom: "10px"
-    },
-    subtitle: {
-        fontSize: "1.2rem",
-        marginBottom: "30px",
-        color: "#ddd"
-    },
-    buttonContainer: {
-        display: "flex",
-        justifyContent: "center",
-        gap: "15px"
-    },
-    button: {
-        border: "none",
-        color: "#fff",
-        padding: "12px 25px",
-        fontSize: "1rem",
-        borderRadius: "30px",
-        cursor: "pointer",
-        transition: "0.3s"
-    }
-};
 
 export default LandingPage;
