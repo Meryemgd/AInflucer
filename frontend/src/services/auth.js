@@ -34,7 +34,7 @@ export async function login({ usernameOrEmail, password }) {
         const res = await fetch(`${API_BASE}/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username: usernameOrEmail, password }),
+            body: JSON.stringify({ email: usernameOrEmail, password }),
         });
 
         if (res.ok) {
@@ -42,9 +42,13 @@ export async function login({ usernameOrEmail, password }) {
             try {
                 const data = await res.json();
                 if (data.token) {
-                    localStorage.setItem("aif_token", data.token);
+                    localStorage.setItem("token", data.token);
+                    localStorage.setItem("userId", String(data.id));
+                    localStorage.setItem("role", data.role);
+                    localStorage.setItem("username", data.username);
+                    localStorage.setItem("accountValidated", String(data.accountValidated));
                 }
-                return { ok: true, token: data.token };
+                return { ok: true, ...data };
             } catch {
                 // backend renvoie texte simple
                 return { ok: true };

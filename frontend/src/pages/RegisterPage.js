@@ -1,8 +1,8 @@
-// src/pages/RegisterPage.jsx
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import './Register.css';
 
-export default function RegisterPage() {
+const RegisterPage = () => {
     const navigate = useNavigate();
     const [username, setUsername] = useState("");
     const [email, setEmail] = useState("");
@@ -11,6 +11,8 @@ export default function RegisterPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [successMsg, setSuccessMsg] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -49,74 +51,92 @@ export default function RegisterPage() {
     };
 
     return (
-        <div style={{ maxWidth: 480, margin: "100px auto", padding: 20 }}>
-            <h2 style={{ textAlign: "center" }}>Inscription</h2>
+        <div className="register-container">
+            <div className="register-form">
+                <h2 className="form-title">Inscription</h2>
+                
+                {error && <div className="error-message">{error}</div>}
+                {successMsg && <div className="success-message">{successMsg}</div>}
+                
+                <form onSubmit={handleSubmit}>
+                    <div className="form-group">
+                        <label htmlFor="username">Nom d'utilisateur</label>
+                        <input
+                            type="text"
+                            id="username"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            required
+                        />
+                    </div>
 
-            {error && (
-                <div style={{ color: "white", background: "#e74c3c", padding: 10, borderRadius: 6, marginBottom: 12 }}>
-                    {error}
+                    <div className="form-group">
+                        <label htmlFor="email">Email</label>
+                        <input
+                            type="email"
+                            id="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="password">Mot de passe</label>
+                        <div className="password-input-container">
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                id="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                            />
+                            <button
+                                type="button"
+                                className="password-toggle"
+                                onClick={() => setShowPassword(!showPassword)}
+                            >
+                                {showPassword ? '🔒' : '👁️'}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="password2">Confirmer le mot de passe</label>
+                        <div className="password-input-container">
+                            <input
+                                type={showConfirmPassword ? "text" : "password"}
+                                id="password2"
+                                value={password2}
+                                onChange={(e) => setPassword2(e.target.value)}
+                                required
+                            />
+                            <button
+                                type="button"
+                                className="password-toggle"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            >
+                                {showConfirmPassword ? '🔒' : '👁️'}
+                            </button>
+                        </div>
+                    </div>
+
+                    <button 
+                        type="submit" 
+                        className="submit-button" 
+                        disabled={loading}
+                    >
+                        {loading ? 'Inscription en cours...' : 'S\'inscrire'}
+                    </button>
+                </form>
+
+                <div className="login-link">
+                    Déjà inscrit ?
+                    <Link to="/login">Se connecter</Link>
                 </div>
-            )}
-
-            {successMsg && (
-                <div style={{ color: "white", background: "#2ecc71", padding: 10, borderRadius: 6, marginBottom: 12 }}>
-                    {successMsg}
-                </div>
-            )}
-
-            <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12 }}>
-                <input
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Nom d'utilisateur"
-                    style={{ padding: "10px 12px", fontSize: 16 }}
-                />
-
-                <input
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Email"
-                    type="email"
-                    style={{ padding: "10px 12px", fontSize: 16 }}
-                />
-
-                <input
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    type="password"
-                    placeholder="Mot de passe"
-                    style={{ padding: "10px 12px", fontSize: 16 }}
-                />
-
-                <input
-                    value={password2}
-                    onChange={(e) => setPassword2(e.target.value)}
-                    type="password"
-                    placeholder="Confirmez le mot de passe"
-                    style={{ padding: "10px 12px", fontSize: 16 }}
-                />
-
-                <button
-                    type="submit"
-                    disabled={loading}
-                    style={{
-                        padding: "12px 16px",
-                        borderRadius: 30,
-                        border: "none",
-                        background: "#00C4CC",
-                        color: "white",
-                        fontSize: 16,
-                        cursor: "pointer",
-                    }}
-                >
-                    {loading ? "Inscription..." : "S'inscrire"}
-                </button>
-            </form>
-
-            <div style={{ marginTop: 14, textAlign: "center" }}>
-                <span>Vous avez déjà un compte ? </span>
-                <Link to="/login">Se connecter</Link>
             </div>
         </div>
     );
-}
+};
+
+export default RegisterPage;
