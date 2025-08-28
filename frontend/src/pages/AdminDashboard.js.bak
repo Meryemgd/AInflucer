@@ -1,0 +1,862 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import HttpService from '../services/httpService';
+import './AdminDashboard.css';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, BarElement } from 'chart.js';
+import { Pie } from 'react-chartjs-2';
+import { Menu, MenuItem, IconButton } from '@mui/material';
+
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, BarElement);
+
+function AdminDashboard() {
+    const navigate = useNavigate();
+    const [users, setUsers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [retryCount, setRetryCount] = useState(0);
+    const [stats, setStats] = useState({
+        totalUsers: 0,
+        validatedUsers: 0,
+        pendingUsers: 0,
+        activeUsers: 0,
+        userActivity: [],
+        userRoles: { admin: 0, user: 0 }
+    });
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [menuAnchorEl, setMenuAnchorEl] = useState(null);
+    const [activeUserId, setActiveUserId] = useState(null);
+
+    const fetchUsers = async () => {
+        try {
+            setLoading(true);
+            setError('');
+            
+            const token = localStorage.getItem('token');
+            if (!token) {
+                navigate('/login');
+                return;
+            }
+
+            const response = await HttpService.get('/api/admin/users', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            if (!response || !response.data) {
+                throw new Error('Format de réponse invalide');
+            }
+
+            const processedData = response.data.map(user => ({
+                ...user,
+                accountValidated: user.role === 'ROLE_ADMIN' ? true : user.accountValidated
+            }));
+
+            setUsers(processedData);
+            setError('');
+            
+            const newStats = {
+                totalUsers: processedData.length,
+                validatedUsers: processedData.filter(u => u.accountValidated).length,
+                pendingUsers: processedData.filter(u => !u.accountValidated).length,
+                activeUsers: processedData.filter(u => u.lastLoginDate && new Date(u.lastLoginDate) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).length,
+                userRoles: {
+                    admin: processedData.filter(u => u.role === 'ROLE_ADMIN').length,
+                    user: processedData.filter(u => u.role === 'ROLE_USER').length
+                }
+            };
+            setStats(newStats);
+            
+        } catch (err) {
+            console.error('Erreur lors de la récupération des utilisateurs:', err);
+            if (err.response?.status === 401) {
+                localStorage.removeItem('token');
+                navigate('/login');
+                return;
+            }
+            
+            if (err.response) {
+                setError(err.response.data?.message || 'Erreur lors de la récupération des utilisateurs');
+            } else if (err.request) {
+                if (retryCount < 3) {
+                    setTimeout(() => {
+                        setRetryCount(prev => prev + 1);
+                        fetchUsers();
+                    }, 2000);
+                    setError('Tentative de reconnexion au serveur...');
+                } else {
+                    setError('Impossible de contacter le serveur. Veuillez rafraîchir la page.');
+                }
+            } else {
+                setError('Une erreur inattendue est survenue');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchUsers();
+    }, []);
+
+    const handleValidateAccount = async (userId) => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                navigate('/login');
+                return;
+            }
+
+            await HttpService.put(`/api/admin/users/${userId}/validate`, {
+                enabled: true,
+                accountValidated: true
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            await fetchUsers();
+            
+        } catch (err) {
+            console.error('Erreur lors de la validation du compte:', err);
+            setError('Erreur lors de la validation du compte');
+        }
+    };
+
+    const chartData = {
+        labels: ['Utilisateurs validés', 'Utilisateurs en attente'],
+        datasets: [
+            {
+                data: [stats.validatedUsers, stats.pendingUsers],
+                backgroundColor: ['#4CAF50', '#FFC107'],
+                borderColor: ['#388E3C', '#FFA000'],
+                borderWidth: 1,
+            },
+        ],
+    };
+
+    const renderUserList = () => {
+        return users.map(user => (
+            <div key={user.id} className="user-card">
+                <div className="user-info">
+                    <h3>{user.username}</h3>
+                    <p>Role: {user.role}</p>
+                    <p>Status: {user.accountValidated ? 'Validé' : 'En attente'}</p>
+                </div>
+                {!user.accountValidated && (
+                    <button 
+                        className="validate-button"
+                        onClick={() => handleValidateAccount(user.id)}
+                    >
+                        Valider
+                    </button>
+                )}
+            </div>
+        ));
+    };
+
+    return (
+        <div className="admin-dashboard">
+            {error && (
+                <div className="error-message">
+                    <p>{error}</p>
+                    {retryCount > 0 && retryCount < 3 && (
+                        <p>Tentative {retryCount}/3...</p>
+                    )}
+                    <button onClick={() => {
+                        setRetryCount(0);
+                        setError('');
+                        fetchUsers();
+                    }}>
+                        Réessayer
+                    </button>
+                </div>
+            )}
+            
+            {loading ? (
+                <div className="loading-container">
+                    <div className="loading-spinner"></div>
+                    <p>Chargement du tableau de bord...</p>
+                </div>
+            ) : (
+                <>
+                    <div className="dashboard-header">
+                        <h1>Tableau de bord administrateur</h1>
+                    </div>
+
+                    <div className="dashboard-stats">
+                        <div className="stats-card">
+                            <h3>Statistiques Utilisateurs</h3>
+                            <div className="stats-grid">
+                                <div className="stat-item">
+                                    <p>Total</p>
+                                    <h4>{stats.totalUsers}</h4>
+                                </div>
+                                <div className="stat-item">
+                                    <p>Validés</p>
+                                    <h4>{stats.validatedUsers}</h4>
+                                </div>
+                                <div className="stat-item">
+                                    <p>En attente</p>
+                                    <h4>{stats.pendingUsers}</h4>
+                                </div>
+                                <div className="stat-item">
+                                    <p>Actifs</p>
+                                    <h4>{stats.activeUsers}</h4>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="chart-container">
+                            <h3>Répartition des utilisateurs</h3>
+                            <Pie data={chartData} />
+                        </div>
+                    </div>
+
+                    <div className="users-section">
+                        <h2>Liste des utilisateurs</h2>
+                        <div className="users-grid">
+                            {renderUserList()}
+                        </div>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+}
+
+export default AdminDashboard;
+import { useNavigate } from 'react-router-dom';
+import HttpService from '../services/httpService';
+import './AdminDashboard.css';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, BarElement } from 'chart.js';
+import { Pie } from 'react-chartjs-2';
+import { Menu, MenuItem, IconButton } from '@mui/material';
+
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, BarElement);
+
+function AdminDashboard() {
+    const navigate = useNavigate();
+    const [users, setUsers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [retryCount, setRetryCount] = useState(0);
+    const [stats, setStats] = useState({
+        totalUsers: 0,
+        validatedUsers: 0,
+        pendingUsers: 0,
+        activeUsers: 0,
+        userActivity: [],
+        userRoles: { admin: 0, user: 0 }
+    });
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [menuAnchorEl, setMenuAnchorEl] = useState(null);
+    const [activeUserId, setActiveUserId] = useState(null);
+
+    const fetchUsers = async () => {
+        try {
+            setLoading(true);
+            setError('');
+            
+            const token = localStorage.getItem('token');
+            if (!token) {
+                navigate('/login');
+                return;
+            }
+
+            const response = await HttpService.get('/api/admin/users', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            if (!response || !response.data) {
+                throw new Error('Format de réponse invalide');
+            }
+
+            const processedData = response.data.map(user => ({
+                ...user,
+                accountValidated: user.role === 'ROLE_ADMIN' ? true : user.accountValidated
+            }));
+
+            setUsers(processedData);
+            setError('');
+            
+            const newStats = {
+                totalUsers: processedData.length,
+                validatedUsers: processedData.filter(u => u.accountValidated).length,
+                pendingUsers: processedData.filter(u => !u.accountValidated).length,
+                activeUsers: processedData.filter(u => u.lastLoginDate && new Date(u.lastLoginDate) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).length,
+                userRoles: {
+                    admin: processedData.filter(u => u.role === 'ROLE_ADMIN').length,
+                    user: processedData.filter(u => u.role === 'ROLE_USER').length
+                }
+            };
+            setStats(newStats);
+            
+        } catch (err) {
+            console.error('Erreur lors de la récupération des utilisateurs:', err);
+            if (err.response?.status === 401) {
+                localStorage.removeItem('token');
+                navigate('/login');
+                return;
+            }
+            
+            if (err.response) {
+                setError(err.response.data?.message || 'Erreur lors de la récupération des utilisateurs');
+            } else if (err.request) {
+                if (retryCount < 3) {
+                    setTimeout(() => {
+                        setRetryCount(prev => prev + 1);
+                        fetchUsers();
+                    }, 2000);
+                    setError('Tentative de reconnexion au serveur...');
+                } else {
+                    setError('Impossible de contacter le serveur. Veuillez rafraîchir la page.');
+                }
+            } else {
+                setError('Une erreur inattendue est survenue');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchUsers();
+    }, []);
+
+    const handleValidateAccount = async (userId) => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                navigate('/login');
+                return;
+            }
+
+            await HttpService.put(`/api/admin/users/${userId}/validate`, {
+                enabled: true,
+                accountValidated: true
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            await fetchUsers();
+            
+        } catch (err) {
+            console.error('Erreur lors de la validation du compte:', err);
+            setError('Erreur lors de la validation du compte');
+        }
+    };
+
+    const chartData = {
+        labels: ['Utilisateurs validés', 'Utilisateurs en attente'],
+        datasets: [
+            {
+                data: [stats.validatedUsers, stats.pendingUsers],
+                backgroundColor: ['#4CAF50', '#FFC107'],
+                borderColor: ['#388E3C', '#FFA000'],
+                borderWidth: 1,
+            },
+        ],
+    };
+
+    const renderUserList = () => {
+        return users.map(user => (
+            <div key={user.id} className="user-card">
+                <div className="user-info">
+                    <h3>{user.username}</h3>
+                    <p>Role: {user.role}</p>
+                    <p>Status: {user.accountValidated ? 'Validé' : 'En attente'}</p>
+                </div>
+                {!user.accountValidated && (
+                    <button 
+                        className="validate-button"
+                        onClick={() => handleValidateAccount(user.id)}
+                    >
+                        Valider
+                    </button>
+                )}
+            </div>
+        ));
+    };
+
+    return (
+        <div className="admin-dashboard">
+            {error && (
+                <div className="error-message">
+                    <p>{error}</p>
+                    {retryCount > 0 && retryCount < 3 && (
+                        <p>Tentative {retryCount}/3...</p>
+                    )}
+                    <button onClick={() => {
+                        setRetryCount(0);
+                        setError('');
+                        fetchUsers();
+                    }}>
+                        Réessayer
+                    </button>
+                </div>
+            )}
+            
+            {loading ? (
+                <div className="loading-container">
+                    <div className="loading-spinner"></div>
+                    <p>Chargement du tableau de bord...</p>
+                </div>
+            ) : (
+                <>
+                    <div className="dashboard-header">
+                        <h1>Tableau de bord administrateur</h1>
+                    </div>
+
+                    <div className="dashboard-stats">
+                        <div className="stats-card">
+                            <h3>Statistiques Utilisateurs</h3>
+                            <div className="stats-grid">
+                                <div className="stat-item">
+                                    <p>Total</p>
+                                    <h4>{stats.totalUsers}</h4>
+                                </div>
+                                <div className="stat-item">
+                                    <p>Validés</p>
+                                    <h4>{stats.validatedUsers}</h4>
+                                </div>
+                                <div className="stat-item">
+                                    <p>En attente</p>
+                                    <h4>{stats.pendingUsers}</h4>
+                                </div>
+                                <div className="stat-item">
+                                    <p>Actifs</p>
+                                    <h4>{stats.activeUsers}</h4>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="chart-container">
+                            <h3>Répartition des utilisateurs</h3>
+                            <Pie data={chartData} />
+                        </div>
+                    </div>
+
+                    <div className="users-section">
+                        <h2>Liste des utilisateurs</h2>
+                        <div className="users-grid">
+                            {renderUserList()}
+                        </div>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+}
+
+export default AdminDashboard;
+    const navigate = useNavigate();
+    const [users, setUsers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [retryCount, setRetryCount] = useState(0);
+    const [stats, setStats] = useState({
+        totalUsers: 0,
+        validatedUsers: 0,
+        pendingUsers: 0,
+        activeUsers: 0,
+        userActivity: [],
+        userRoles: { admin: 0, user: 0 }
+    });
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [menuAnchorEl, setMenuAnchorEl] = useState(null);
+    const [activeUserId, setActiveUserId] = useState(null);
+
+    return (
+        <div className="admin-dashboard">
+            {error && (
+                <div className="error-message">
+                    <p>{error}</p>
+                    {retryCount > 0 && retryCount < 3 && (
+                        <p>Tentative {retryCount}/3...</p>
+                    )}
+                    <button onClick={() => {
+                        setRetryCount(0);
+                        setError('');
+                        fetchUsers();
+                    }}>
+                        Réessayer
+                    </button>
+                </div>
+            )}
+            
+            {loading ? (
+                <div className="loading-container">
+                    <div className="loading-spinner"></div>
+                    <p>Chargement du tableau de bord...</p>
+                </div>
+            ) : (
+                <>
+                    <div className="dashboard-header">
+                        <h1>Tableau de bord administrateur</h1>inearScale, PointElement, LineElement, BarElement } from 'chart.js';
+import { Pie } from 'react-chartjs-2';
+import { Menu, MenuItem, IconButton } from '@mui/material';
+
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, BarElement);
+
+function AdminDashboard() {
+    const navigate = useNavigate();
+    const [users, setUsers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [retryCount, setRetryCount] = useState(0);
+    const [stats, setStats] = useState({
+        totalUsers: 0,
+        validatedUsers: 0,
+        pendingUsers: 0,
+        activeUsers: 0,
+        userActivity: [],
+        userRoles: { admin: 0, user: 0 }
+    });
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [menuAnchorEl, setMenuAnchorEl] = useState(null);
+    const [activeUserId, setActiveUserId] = useState(null);
+
+    // Récupérer la liste des utilisateurs
+    const fetchUsers = async () => {
+        try {
+            setLoading(true);
+            setError('');
+            
+            const token = localStorage.getItem('token');
+            if (!token) {
+                navigate('/login');
+                return;
+            }
+
+            console.log('Début de la récupération des utilisateurs');
+            const response = await HttpService.get('/api/admin/users', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            console.log('Réponse brute:', response);
+            
+            if (!response || !Array.isArray(response.data)) {
+                console.error('Réponse invalide:', response);
+                throw new Error('Format de réponse invalide');
+            }
+            
+            // Assurer que les admins sont toujours marqués comme validés
+            const processedData = response.data.map(user => ({
+                ...user,
+                accountValidated: user.role === 'ROLE_ADMIN' ? true : user.accountValidated
+            }));
+            
+            console.log('Données traitées:', processedData);
+            setUsers(processedData);
+            setError('');
+            
+            // Mise à jour des statistiques
+            const stats = {
+                totalUsers: processedData.length,
+                validatedUsers: processedData.filter(u => u.accountValidated).length,
+                pendingUsers: processedData.filter(u => !u.accountValidated).length,
+                activeUsers: processedData.filter(u => u.lastLoginDate && new Date(u.lastLoginDate) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).length,
+                userRoles: {
+                    admin: processedData.filter(u => u.role === 'ROLE_ADMIN').length,
+                    user: processedData.filter(u => u.role === 'ROLE_USER').length
+                }
+            };
+            setStats(stats);
+            
+            // Calculer les statistiques
+            const statistics = {
+                totalUsers: processedData.length,
+                validatedUsers: processedData.filter(u => u.accountValidated).length,
+                pendingUsers: processedData.filter(u => !u.accountValidated).length,
+                activeUsers: processedData.filter(u => u.lastLoginDate).length,
+                userRoles: {
+                    admin: processedData.filter(u => u.role === 'ADMIN').length,
+                    user: processedData.filter(u => u.role === 'USER').length
+                }
+            };
+            setStats(statistics);
+            
+        } catch (err) {
+            console.error('Erreur détaillée:', err);
+            if (err.response && err.response.status === 401) {
+                localStorage.removeItem('token');
+                navigate('/login');
+                return;
+            }
+            
+            if (err.response) {
+                console.error('Détails de l\'erreur:', {
+                    status: err.response.status,
+                    data: err.response.data
+                });
+                setError(err.response.data?.message || 'Erreur lors de la récupération des utilisateurs');
+            } else if (err.request) {
+                console.error('Erreur de requête:', err.request);
+                if (retryCount < 3) {
+                    setTimeout(() => {
+                        setRetryCount(prev => prev + 1);
+                        fetchUsers();
+                    }, 2000);
+                    setError('Tentative de reconnexion au serveur...');
+                } else {
+                    setError('Impossible de contacter le serveur. Veuillez rafraîchir la page.');
+                }
+            } else {
+                setError('Une erreur inattendue est survenue');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Gérer la validation du compte
+    const handleValidateAccount = async (userId) => {
+        try {
+            setError(''); // Réinitialiser les erreurs précédentes
+            
+            // Trouver l'utilisateur avant la validation
+            const userToValidate = users.find(u => u.id === userId);
+            if (!userToValidate) {
+                setError('Utilisateur non trouvé');
+                return;
+            }
+
+            // Appel API pour valider le compte
+            const response = await HttpService.put(`/api/admin/users/${userId}/validate`, {
+                enabled: true,
+                accountValidated: true
+            });
+
+            if (response && response.status === 500) {
+                setError('Erreur lors de la validation du compte');
+                return;
+            }
+
+            // Rafraîchir la liste des utilisateurs
+            await fetchUsers();
+        } catch (error) {
+            console.error('Erreur lors de la validation:', error);
+            if (error.response && error.response.status === 401) {
+                // Si c'est une erreur d'authentification, ne pas rediriger
+                setError("Session expirée. Veuillez vous reconnecter.");
+            } else {
+                setError('Une erreur est survenue lors de la validation');
+            }
+        }
+    };
+
+    // Gérer la suppression du compte
+    const handleDeleteUser = async (userId) => {
+        // Vérifier si l'utilisateur existe
+        const userToDelete = users.find(u => u.id === userId);
+        if (!userToDelete) {
+            setError('Utilisateur introuvable');
+            return;
+        }
+
+        // Vérifier si c'est un admin
+        if (userToDelete.role === 'ROLE_ADMIN') {
+            setError('Impossible de supprimer un compte administrateur');
+            return;
+        }
+
+        if (window.confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur ${userToDelete.username} ?`)) {
+            try {
+                setError('');
+                setLoading(true);
+                
+                // Appel API pour supprimer le compte
+                const response = await HttpService.delete(`/api/admin/users/${userId}`);
+                
+                if (response && response.status === 200) {
+                    // Mettre à jour la liste des utilisateurs localement sans appeler fetchUsers
+                    setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
+                    // Mettre à jour les statistiques
+                    setStats(prev => ({
+                        ...prev,
+                        totalUsers: prev.totalUsers - 1,
+                        validatedUsers: userToDelete.accountValidated ? prev.validatedUsers - 1 : prev.validatedUsers,
+                        pendingUsers: !userToDelete.accountValidated ? prev.pendingUsers - 1 : prev.pendingUsers
+                    }));
+                } else {
+                    throw new Error('La suppression a échoué');
+                }
+                
+            } catch (error) {
+                console.error('Erreur détaillée lors de la suppression:', error);
+                
+                if (error.response) {
+                    // Erreur avec réponse du serveur
+                    switch (error.response.status) {
+                        case 401:
+                            setError("Session expirée. Veuillez vous reconnecter.");
+                            break;
+                        case 403:
+                            setError("Vous n'avez pas les droits pour effectuer cette action.");
+                            break;
+                        case 404:
+                            setError("L'utilisateur n'existe plus.");
+                            break;
+                        case 500:
+                            setError("Erreur serveur. Veuillez réessayer plus tard.");
+                            break;
+                        default:
+                            setError(error.response.data?.message || 'Erreur lors de la suppression');
+                    }
+                } else if (error.request) {
+                    // Erreur sans réponse du serveur
+                    setError('Impossible de contacter le serveur. Vérifiez votre connexion.');
+                } else {
+                    // Erreur lors de la création de la requête
+                    setError('Une erreur est survenue lors de la suppression');
+                }
+            } finally {
+                setLoading(false);
+            }
+        }
+    };
+
+    useEffect(() => {
+        fetchUsers();
+    }, []);
+
+    const handleLogout = () => {
+        localStorage.clear();
+        navigate('/login');
+    };
+
+    const handleOpenMenu = (event, userId) => {
+        setMenuAnchorEl(event.currentTarget);
+        setActiveUserId(userId);
+    };
+
+    const handleCloseMenu = () => {
+        setMenuAnchorEl(null);
+        setActiveUserId(null);
+    };
+
+    const handleModifyUser = () => {
+        const user = users.find(u => u.id === activeUserId);
+        setSelectedUser(user);
+        handleCloseMenu();
+    };
+
+    return (
+        <div className="admin-dashboard">
+            <header className="dashboard-header">
+                <h1>Tableau de bord Administrateur</h1>
+                <button onClick={handleLogout} className="logout-button">
+                    Déconnexion
+                </button>
+            </header>
+
+            <main className="dashboard-content">
+                {error && <div className="error-message">{error}</div>}
+
+                <div className="dashboard-stats">
+                    <h2>Statistiques</h2>
+                    <div className="stats-grid">
+                        <div className="stat-card">
+                            <h3>Utilisateurs</h3>
+                            <p>{users.length}</p>
+                        </div>
+                        <div className="stat-card">
+                            <h3>En attente</h3>
+                            <p>{users.filter(user => !user.accountValidated && user.role !== 'ROLE_ADMIN').length}</p>
+                        </div>
+                        <div className="stat-card">
+                            <h3>Validés</h3>
+                            <p>{users.filter(user => user.accountValidated || user.role === 'ROLE_ADMIN').length}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {loading ? (
+                    <div className="loading">Chargement...</div>
+                ) : (
+                    <div className="users-section">
+                        <h2>Gestion des utilisateurs</h2>
+                        <div className="users-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nom</th>
+                                        <th>Email</th>
+                                        <th>Rôle</th>
+                                        <th>Statut</th>
+                                        <th>Actions principales</th>
+                                        <th>Gestion</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {users.map(user => (
+                                        <tr key={user.id}>
+                                            <td>{user.id}</td>
+                                            <td>{user.username}</td>
+                                            <td>{user.email}</td>
+                                            <td>
+                                                <span className={`user-role ${user.role === 'ROLE_ADMIN' ? 'admin' : 'user'}`}>
+                                                    {user.role === 'ROLE_ADMIN' ? 'ADMIN' : 'USER'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span className={`status-badge ${user.accountValidated ? 'validated' : 'pending'}`}>
+                                                    {user.accountValidated ? 'Validé' : 'En attente'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {!user.accountValidated && (
+                                                    <button 
+                                                        onClick={() => handleValidateAccount(user.id)}
+                                                        className="action-button validate-button"
+                                                    >
+                                                        Valider
+                                                    </button>
+                                                )}
+                                            </td>
+                                            <td>
+                                                <IconButton 
+                                                    className="action-button menu-button"
+                                                    onClick={(e) => handleOpenMenu(e, user.id)}
+                                                >
+                                                    ...
+                                                </IconButton>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                <Menu
+                    anchorEl={menuAnchorEl}
+                    open={Boolean(menuAnchorEl)}
+                    onClose={handleCloseMenu}
+                >
+                    <MenuItem onClick={handleModifyUser}>Modifier</MenuItem>
+                    <MenuItem 
+                        onClick={() => {
+                            handleDeleteUser(activeUserId);
+                            handleCloseMenu();
+                        }}
+                        style={{ color: '#dc3545' }}
+                    >
+                        Supprimer
+                    </MenuItem>
+                </Menu>
+            </main>
+        </div>
+    );
+}
+
+export default AdminDashboard;

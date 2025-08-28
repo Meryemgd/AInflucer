@@ -1,0 +1,243 @@
+:root {
+  --primary: #6e48aa;
+  --secondary: #9d50bb;
+  --accent: #ff6b6b;
+  --light: #f8f9fa;
+  --dark: #343a40;
+  --text: #495057;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.container {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  max-width: 900px;
+  width: 100%;
+  margin: 40px auto;
+}
+
+.header {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  color: white;
+  padding: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+}
+
+.logo-icon {
+  font-size: 32px;
+}
+
+.logo-text {
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 8px 15px;
+  border-radius: 20px;
+}
+
+.user-icon {
+  font-size: 16px;
+}
+
+.welcome-section {
+  padding: 40px;
+}
+
+.welcome-title {
+  color: var(--primary);
+  font-size: 28px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.user-email {
+  text-align: center;
+  color: var(--text);
+  margin-bottom: 20px;
+  font-style: italic;
+}
+
+.description {
+  background: #f8f9fa;
+  padding: 25px;
+  border-radius: 12px;
+  margin: 25px 0;
+  line-height: 1.8;
+  border-left: 4px solid var(--primary);
+}
+
+.social-section {
+  padding: 20px 40px;
+}
+
+.section-title {
+  color: var(--primary);
+  font-size: 22px;
+  margin-bottom: 25px;
+  text-align: center;
+}
+
+.social-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.social-btn {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 16px 25px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  font-size: 17px;
+  color: white;
+  position: relative;
+}
+
+.social-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.facebook-btn {
+  background: #1877F2;
+}
+
+.instagram-btn {
+  background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+}
+
+.linkedin-btn {
+  background: #0077B5;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: space-between;
+  padding: 30px 40px;
+  background: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  border-radius: 50px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.next-btn {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(110, 72, 170, 0.3);
+}
+
+.next-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(110, 72, 170, 0.4);
+}
+
+.logout-btn {
+  background: rgba(108, 117, 125, 0.15);
+  color: var(--dark);
+}
+
+.logout-btn:hover {
+  background: rgba(108, 117, 125, 0.25);
+}
+
+/* Animation de connexion */
+.connecting-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s linear infinite;
+  margin-left: auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Indicateur de connexion réussie */
+.social-btn.connecting {
+  position: relative;
+  overflow: hidden;
+}
+
+.social-btn.connecting::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.3);
+  animation: connectingAnimation 1.5s forwards;
+}
+
+@keyframes connectingAnimation {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+  
+  .welcome-section, .social-section {
+    padding: 25px;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

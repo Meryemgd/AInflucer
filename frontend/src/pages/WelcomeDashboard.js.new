@@ -1,0 +1,161 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { FaHome, FaUser, FaCog, FaSignOutAlt } from 'react-icons/fa';
+import './WelcomeDashboard.css';
+
+export default function WelcomeDashboard() {
+    const navigate = useNavigate();
+    const [user, setUser] = useState(null);
+    const [accountValidated, setAccountValidated] = useState(false);
+    const [showPlans, setShowPlans] = useState(false);
+
+    useEffect(() => {
+        const username = localStorage.getItem('username');
+        const role = localStorage.getItem('userRole');
+        const id = localStorage.getItem('userId');
+        const validationStatus = localStorage.getItem('accountValidated') === 'true';
+        
+        setUser({ username, role, id });
+        setAccountValidated(validationStatus);
+
+        const checkValidationStatus = setInterval(() => {
+            const newStatus = localStorage.getItem('accountValidated') === 'true';
+            if (newStatus !== accountValidated) {
+                setAccountValidated(newStatus);
+            }
+        }, 30000);
+
+        return () => clearInterval(checkValidationStatus);
+    }, [accountValidated]);
+
+    if (!user) {
+        return (
+            <div className="dashboard-layout loading">
+                <h2>Chargement...</h2>
+            </div>
+        );
+    }
+
+    const handleLogout = () => {
+        localStorage.clear();
+        navigate('/login');
+    };
+
+    const handleSocialConnect = () => {
+        localStorage.setItem('returnToWelcome', 'true');
+        navigate('/connect-social-accounts');
+    };
+
+    const handleDashboardAccess = () => {
+        const role = user.role;
+        const userId = user.id;
+        
+        const roleRoutes = {
+            'ROLE_ADMIN': '/admin/dashboard',
+            'ROLE_USER': `/dashboard/${userId}`,
+            'ROLE_CLIENT': `/client/${userId}`,
+            'ROLE_CM': `/cm/${userId}`
+        };
+
+        const redirectPath = roleRoutes[role] || '/';
+        navigate(redirectPath);
+    };
+
+    const handleTogglePlans = () => {
+        setShowPlans(!showPlans);
+    };
+
+    return (
+        <div className="dashboard-layout">
+            <nav className="sidebar">
+                <div className="sidebar-header">
+                    <img src="/logo192.png" alt="Logo" className="sidebar-logo" />
+                    <h3>{user.username}</h3>
+                </div>
+                <ul className="nav-links">
+                    <li onClick={handleDashboardAccess}>
+                        <FaHome className="nav-icon" />
+                        Dashboard
+                    </li>
+                    <li>
+                        <FaUser className="nav-icon" />
+                        Profile
+                    </li>
+                    <li onClick={handleTogglePlans}>
+                        <FaCog className="nav-icon" />
+                        Plans et Abonnements
+                    </li>
+                    <li className="logout-link" onClick={handleLogout}>
+                        <FaSignOutAlt className="nav-icon" />
+                        Déconnexion
+                    </li>
+                </ul>
+            </nav>
+            
+            <main className="main-content">
+                <div className="welcome-header">
+                    <h1>Bienvenue, {user.username}!</h1>
+                    <p>Gérez votre compte et vos paramètres ici.</p>
+                    {!accountValidated && (
+                        <div className="validation-notice">
+                            <p>Votre compte est en attente de validation. Certaines fonctionnalités peuvent être limitées.</p>
+                            <button onClick={handleSocialConnect} className="connect-social-button">
+                                Connecter vos comptes sociaux
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {showPlans && (
+                    <div className="plans-section">
+                        <h2>Nos Offres</h2>
+                        <div className="plans-container">
+                            <div className="plan-card free">
+                                <div className="plan-header">
+                                    <h3>Version Gratuite</h3>
+                                    <div className="price">0€</div>
+                                </div>
+                                <div className="plan-features">
+                                    <ul>
+                                        <li>✓ 1 compte de réseau social</li>
+                                        <li>✓ 3 posts générés par jour</li>
+                                        <li>✓ Planification IA intelligente</li>
+                                        <li>✓ Statistiques de base</li>
+                                        <li className="disabled">✗ Suggestions de contenu IA</li>
+                                        <li className="disabled">✗ Support prioritaire</li>
+                                        <li className="disabled">✗ Analyse de performance avancée</li>
+                                    </ul>
+                                </div>
+                                <button className="plan-button free-button">
+                                    Commencer gratuitement
+                                </button>
+                            </div>
+
+                            <div className="plan-card premium">
+                                <div className="plan-header">
+                                    <div className="premium-badge">RECOMMANDÉ</div>
+                                    <h3>Version Premium</h3>
+                                    <div className="price">29.99€<span>/mois</span></div>
+                                </div>
+                                <div className="plan-features">
+                                    <ul>
+                                        <li>✓ Jusqu'à 5 comptes sociaux</li>
+                                        <li>✓ Posts illimités</li>
+                                        <li>✓ Planification IA intelligente</li>
+                                        <li>✓ Statistiques avancées</li>
+                                        <li>✓ Suggestions de contenu IA</li>
+                                        <li>✓ Support prioritaire 24/7</li>
+                                        <li>✓ Analyse de performance détaillée</li>
+                                    </ul>
+                                </div>
+                                <button className="plan-button premium-button">
+                                    Passer à la version Premium
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </main>
+        </div>
+    );
+}
